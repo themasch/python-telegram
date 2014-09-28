@@ -6,7 +6,7 @@ class TelegramConnection(asyncore.dispatcher):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connect((host, port))
-        #self.buffer = 'main_session\n'
+        self.buffer = ''
         self._matcher = re.compile(r"^\s*ANSWER (?P<length>\d+)\s+(?P<data>.*)")
 
     def handle_connect(self):
