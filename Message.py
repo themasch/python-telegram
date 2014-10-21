@@ -8,7 +8,7 @@ __author__ = 'Mark Schmale <masch@masch.it>'
 class Message():
     def __init__(self, msgid, timestamp, sender, msg, channel=""):
         self.received = datetime.utcnow()
-        self.time = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S %z")
+        self.time = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
         self.sender = sender
         self.channel = channel
         self.message = msg
