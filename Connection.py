@@ -3,6 +3,7 @@ import socket
 import re
 import select
 import errno
+import sys
 
 from Message import Message
 
@@ -11,7 +12,7 @@ class TelegramConnection():
 
     def __init__(self, host="localhost", port=9012):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.setblocking(0)
+        self.socket.settimeout(None)
         err = self.socket.connect_ex((host, port))
         if err:
             print errno.errorcode[err]
@@ -21,13 +22,14 @@ class TelegramConnection():
         self.re_grp_msg = None
         self.re_msg = None
         self.compileRe()
-        print "waiting for connection.."
         self.running = True
+
+        self.msg_callbacks = []
 
     def compileRe(self):
         self._matcher = re.compile(r"^\s*ANSWER (?P<length>\d+)\s+(?P<data>.*)")
-        self.re_grp_msg = re.compile(r"(?P<msgid>\d+)\s+\[(?P<time>.*)\s+\+0200\]\s+(?P<channel>.*) @ (?P<sender>.*) [»>]+ (?P<msg>.*)$")
-        self.re_msg = re.compile(r"(?P<msgid>\d+)\s+\[(?P<time>.*)\s+\+0200\]\s+(?P<sender>.*) [»>]+ (?P<msg>.*)$")
+        self.re_grp_msg = re.compile(r"(?P<msgid>\d+)\s+\[(?P<time>.*)\s+\+\d+\]\s+(?P<channel>.*) @ (?P<sender>.*) [»>]+ (?P<msg>.*)$")
+        self.re_msg = re.compile(r"(?P<msgid>\d+)\s+\[(?P<time>.*)\s+\+\d+\]\s+(?P<sender>.*) [»>]+ (?P<msg>.*)$")
 
     def start_main_session(self):
         self.send("main_session\n")
@@ -62,12 +64,16 @@ class TelegramConnection():
             )
 
         if mes:
-            self.on_message(mes)
+            self.handle_message(mes)
         else:
             print "<<< " + msg
 
     def close(self):
+        print "close().."
+        self.running = False
+        self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
+        print "socket.close()"
 
     def parse_message(self, msg):
         result = self._matcher.match(msg)
@@ -82,29 +88,24 @@ class TelegramConnection():
 
     def loop(self):
         while self.running:
-            sockets = [ self.socket ]
-            print "waiting for event..."
-            readable, writable, errored = select.select(sockets, [ ], sockets)
-
-            for sock in readable:
-                data = sock.recv(8192)
+            try:
+                data = self.socket.recv(8192)
+                print "got data.."
                 if data:
                     self.parse_message(data)
                 else:
-                    sock.close()
-                    self.running = Falses
+                    print >>sys.stderr, 'closing: ', self.socket.getpeername()
+                    self.socket.close()
+                    self.running = False
+            except socket.error as err:
+                if err.errno != 9:
+                    print "socket error: ({0}) {1}".format(err.errno, err.strerror)
 
-            for sock in errored:
-                print >>sys.stderr, 'handling exceptional condition for', sock.getpeername()
-                sock.close()
+    def on_message(self, cb):
+        self.msg_callbacks.append(cb)
 
-
-
-    def on_message(self, message):
-        """
-        :param message:
-        :type message Message
-        :return:
-        """
+    def handle_message(self, message):
+        for cb in self.msg_callbacks:
+            cb(message)
 
         print message
