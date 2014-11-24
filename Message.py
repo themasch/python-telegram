@@ -9,7 +9,7 @@ class Message():
     def __init__(self, msgid, timestamp, sender, msg, channel=""):
         self.received = datetime.utcnow()
         self.time = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
-        self.sender = sender
+        self.sender = sender.replace('_', ' ')
         self.channel = channel
         self.message = msg
 
