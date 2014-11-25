@@ -12,6 +12,7 @@ class Message():
         self.sender = sender.replace('_', ' ')
         self.channel = channel
         self.message = msg
+        self.msgid = msgid
 
     def __str__(self):
         return "[{time}|{received}] [{sender} @ {channel}] : {message}".format(
