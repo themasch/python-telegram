@@ -11,6 +11,9 @@ from Message import Message
 
 
 class TelegramConnection():
+    AUDIO = 1
+    VIDEO = 2
+    PICTURE = 3
 
     def __init__(self, host="localhost", port=9012):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -27,7 +30,10 @@ class TelegramConnection():
         self.running = True
 
         self.msg_callbacks = []
-        self.pic_callbacks = []
+        self.picture_callbacks = []
+        self.video_callbacks = []
+        self.audio_callbacks = []
+        self.lastLoadType = None
 
     def compileRe(self):
         self._matcher = re.compile(r"^\s*ANSWER (?P<length>\d+)\s+(?P<data>.*)")
@@ -74,8 +80,15 @@ class TelegramConnection():
         else:
             pic_path = self.re_pic.match(msg)
             if pic_path:
-                for cb in self.pic_callbacks:
-                    cb(pic_path.group("path"))
+                if self.lastLoadType == self.AUDIO:
+                    for cb in self.audio_callbacks:
+                        cb(pic_path.group("path"))
+                elif self.lastLoadType == self.VIDEO:
+                    for cb in self.video_callbacks:
+                        cb(pic_path.group("path"))
+                elif self.lastLoadType == self.PICTURE:
+                    for cb in self.picture_callbacks:
+                        cb(pic_path.group("path"))
             else:
                 print "<<< " + msg
 
@@ -117,7 +130,13 @@ class TelegramConnection():
         self.msg_callbacks.append(cb)
 
     def on_picture(self, cb):
-        self.pic_callbacks.append(cb)
+        self.picture_callbacks.append(cb)
+
+    def on_audio(self, cb):
+        self.audio_callbacks.append(cb)
+
+    def on_video(self, cb):
+        self.video_callbacks.append(cb)
 
     def handle_message(self, message):
         print "handle message!"
@@ -127,4 +146,13 @@ class TelegramConnection():
         print message
 
     def load_photo(self, msgid):
+        self.lastLoadType = self.PICTURE
         self.send("load_photo " + msgid + "\n")
+
+    def load_audio(self, msgid):
+        self.lastLoadType = self.AUDIO
+        self.send("load_audio " + msgid + "\n")
+
+    def load_video(self, msgid):
+        self.lastLoadType = self.VIDEO
+        self.send("load_video " + msgid + "\n")
